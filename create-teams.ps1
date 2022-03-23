@@ -8,6 +8,13 @@
 # Lay-out CSV file: TeamsName, Description, TeamsType, ChannelName[;], Template, Owners[;], Members[;]
 #
 
+param(
+    [String]$ImportPath
+)
+
+
+$outPath = "./log.txt"
+
 
 function Create-Channel
 {
@@ -18,12 +25,17 @@ function Create-Channel
     process{
         try
         {
-            $teamChannels = $channelName -split ";"
+            $teamChannels = $channelName.Split(";")
             if($teamChannels)
             {
-                for($i=0; $i -le ($teamChannels.count -1 ); $i++)
+                for($i=0; $i -le ($teamChannels.Count -1 ); $i++)
                 {
-                    New-TeamChannel -GroupId $groupId -DisplayName $teamChannel[$i]
+                    Write-Host $teamChannels[$i] "wordt ingesteld..."
+                    Start-Sleep -Seconds 5
+
+                    New-TeamChannel -GroupId $groupId -DisplayName $teamChannels[$i] -Description $teamChannels[$i] -MembershipType "Standard"
+                    
+                    Write-Host "Kanaal:" $teamChannels[$i] "Gereed."
                 }
             }
         }
@@ -36,7 +48,7 @@ function Create-Channel
 
 
 
-function Add-Users{
+function Add-User{
     param
     (
         $Users, $GroupId, $CurrentUserName, $Role
@@ -45,14 +57,15 @@ function Add-Users{
     {
         try
         {
-            $team_users = $Users -Split ";"    
+            $team_users = $Users.Split(";")
             if($team_users)
             {
                 for($j=0; $j -le $team_users.count - 1; $j++)
                 {
                     if($team_users[$j] -ne $CurrentUsername)
                     {
-                        Add-TeamUser -GroupId $GroupId -User $team_user[$j] -Role $Role
+                        Add-TeamUser -GroupId $GroupId -User $team_users[$j] -Role $Role
+                        #$team_users[$j], $Role| Out-File -FilePath $outPath
                     }
                 }
             }
@@ -78,12 +91,18 @@ function Create-NewTeam
     )
     Process
         {
+            Clear-Host
+            Write-Host "Microsoft Teams module importeren"
             Import-Module MicrosoftTeams
-            $cred = Get-Credential
-            $username = $cred.UserName
-            Connect-MicrosoftTeams -Credential $cred
+            #$cred = Get-Credential
+            #$username = $cred.UserName
+            Write-Host "Verbinden met Office 365"
+            $context = Connect-MicrosoftTeams
+            $username = $context.Account.Id
+
             $teams = Import-Csv -Path $ImportPath
 
+           
             foreach($team in $teams)
             {
                 # Controleer of het Teams al bestaat. Gaat niet goed, te veel Teams, of rechten..
@@ -92,20 +111,23 @@ function Create-NewTeam
                 try
                 {
                     Write-Host "Team wordt gemaakt: " $team.TeamsName
-                    $group = New-Team -DisplayName $team.TeamsName -Description $team.Description -Visibility $team.TeamsType
+                    $group = New-Team -DisplayName $team.TeamsName -Description $team.TeamsDescription -Visibility $team.TeamsType
+                    Write-Host $team.TeamsName 'Gecreeerd.'
                 }
                 catch
                 {
                     Write-Host "Fout bij het maken van het Team" $team.TeamsName
                 }
                 
+                Start-Sleep -Seconds 5
+                
                 Write-Host "Kanalen worden gemaakt: " $team.ChannelName
-                Create-Channel -ChannelName $team.ChannelName -GroupId $group.Id
+                Create-Channel -ChannelName $team.ChannelName -GroupId $group.GroupId
 
                 Write-Host "Teamleden toevoegen... "
-                #Add-User -Users $team.Members -GroupId $group.Id -CurrentUserName $username -Role Member
+                Add-User -Users $team.Members -GroupId $group.GroupId -CurrentUserName $username -Role Member
 
-                Write-Host "Team-eigenaren toevoegen..."
+                #Write-Host "Team-eigenaren toevoegen..."
                 #Add-User -Users $team.Owners -GroupId $group.Id -CurrentUserName $username -Role Owner
 
                 Write-Host "Team creeren gereed: " $team.TeamsName
@@ -116,3 +138,9 @@ function Create-NewTeam
         }
 
 }
+
+
+# Alternatief
+# $import | foreach-object -Process{$group = new-team -displayname $_.TeamsName -Description $_.TeamsDescription -Visibility $_.Teamstype}
+
+Create-NewTeam -ImportPath $ImportPath
