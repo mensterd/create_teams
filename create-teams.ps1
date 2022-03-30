@@ -140,7 +140,38 @@ function Create-NewTeam
 }
 
 
-# Alternatief
-# $import | foreach-object -Process{$group = new-team -displayname $_.TeamsName -Description $_.TeamsDescription -Visibility $_.Teamstype}
+
 
 Create-NewTeam -ImportPath $ImportPath
+
+<#
+        .SYNOPSIS
+        Creates Microsoft Teams teams, channels and populates them.
+
+        .DESCRIPTION
+        Creates Microsoft Teams teams, channels and populates them. Import-source is CSV textfile, supplied as parameter.
+        Lay-out of importfile: TeamsName,TeamsDescription,TeamsType,ChannelName,Owners,Members
+
+        Teamsname: The name of the team.
+        TeamsDescription: Description text.
+        TeamsType: either Private our Public.
+        ChannelName: Semicolumn separated list of channels to be created in team.
+        Owners: Semicolumn separated list of useraccounts to be team-owners.
+        Members: Semicolumn separated list of useracounts to be team-users.
+
+        .PARAMETER Importpath
+        Specifies the path of the CSV importfile.
+
+        .INPUTS
+        None
+
+        .OUTPUTS
+        None
+
+        .EXAMPLE
+        Create-Teams -Importpath './importfile.csv'
+
+        .LINK
+        https://github.com/mensterd/create_teams
+                
+    #>
